@@ -1,6 +1,37 @@
-const d=document.querySelector('#calcDisplay');let expr='';
-function normalize(e){return e.replaceAll('×','*').replaceAll('÷','/').replaceAll('−','-').replaceAll('^','**').replaceAll('√','Math.sqrt');}
-document.querySelectorAll('[data-calc]').forEach(b=>b.onclick=()=>{const x=b.dataset.calc;if(x==='C'){expr='';d.value='';return}if(x==='⌫'){expr=expr.slice(0,-1);d.value=expr;return}if(x==='='){try{let e=normalize(expr).replace(/(\d+(?:\.\d+)?)²/g,'($1**2)').replace(/(\d+(?:\.\d+)?)%/g,'($1/100)').replace(/(\d+(?:\.\d+)?)1\/x/g,'(1/$1)');e=e.replace(/sin\(/g,'Math.sin(').replace(/cos\(/g,'Math.cos(').replace(/tan\(/g,'Math.tan(');const val=Function('return '+e)();d.value=Number.isFinite(val)?Number(val.toFixed(12)): 'خطأ';expr=d.value; }catch{d.value='خطأ';expr=''}return}if(x==='x²'){expr+='²'}else if(x==='1/x'){expr+='1/x'}else if(x==='√'){expr+='√'}else expr+=x;d.value=expr});
+const display=document.querySelector('#calcDisplay'),sub=document.querySelector('#calcSub'),modeText=document.querySelector('#calcMode'),shiftStatus=document.querySelector('#shiftStatus'),angleStatus=document.querySelector('#angleStatus'),memoryStatus=document.querySelector('#memoryStatus');
+let expr='',ans=0,memory=0,angle='DEG',shift=false,alpha=false;
+function trig(v,type){const r=angle==='DEG'?v*Math.PI/180:v;return type==='sin'?Math.sin(r):type==='cos'?Math.cos(r):Math.tan(r)}
+function invTrig(v,type){const r=type==='asin'?Math.asin(v):type==='acos'?Math.acos(v):Math.atan(v);return angle==='DEG'?r*180/Math.PI:r}
+function fact(n){if(n<0||n>170||Math.floor(n)!==n)throw Error();let r=1;for(let i=2;i<=n;i++)r*=i;return r}
+function evalExpr(s){let e=s.replaceAll('×','*').replaceAll('÷','/').replaceAll('−','-').replaceAll('^','**').replace(/(\d+(?:\.\d+)?)²/g,'($1**2)').replace(/(\d+(?:\.\d+)?)%/g,'($1/100)').replace(/(\d+(?:\.\d+)?)!\b/g,'fact($1)').replace(/√\(/g,'Math.sqrt(').replace(/∛\(/g,'Math.cbrt(').replace(/π/g,'Math.PI').replace(/(?<![A-Za-z])e(?![A-Za-z])/g,'Math.E').replace(/Ans/g,'ans').replace(/Abs\(/g,'Math.abs(').replace(/10\^/g,'10**').replace(/sin\(/g,'trig(').replace(/cos\(/g,'trig(').replace(/tan\(/g,'trig(');e=e.replace(/trig\(([^()]*)\)/g,(m,v)=>v));return Function('trig','fact','ans','return '+e)(trig,fact,ans)}
+function render(){display.textContent=expr||'0';sub.textContent=ans!==0?'Ans = '+ans:'';shiftStatus.textContent=shift?'SHIFT ON':'SHIFT';angleStatus.textContent=angle;memoryStatus.textContent='M:'+(memory||0);modeText.textContent='COMP · '+angle}
+function add(x){expr+=x;render()}
+document.querySelectorAll('#calculator [data-key]').forEach(b=>b.addEventListener('click',()=>add(b.dataset.key)));
+document.querySelectorAll('#calculator [data-fn]').forEach(b=>b.addEventListener('click',()=>{
+ const f=b.dataset.fn;
+ if(f==='shift'){shift=!shift;render();return} if(f==='alpha'){alpha=!alpha;render();return}
+ if(f==='clear'){expr='';render();return} if(f==='del'){expr=expr.slice(0,-1);render();return}
+ if(f==='equal'){try{ans=evalExpr(expr);expr=Number(ans.toFixed(12)).toString();render()}catch{display.textContent='Math ERROR';setTimeout(render,800)}return}
+ if(f==='ans'){add('Ans');return}
+ if(f==='frac'){add('(');sub.textContent='اكتب البسط ÷ المقام ثم أغلق القوس';return}
+ if(f==='sqrt'){add('√(');return} if(f==='cbrt'){add('∛(');return}
+ if(f==='square'){expr+='²';render();return} if(f==='power'){add('^');return}
+ if(f==='log'){add('Math.log10(');return} if(f==='ln'){add('Math.log(');return}
+ if(f==='exp'){add('10^');return} if(f==='expe'){add('Math.exp(');return}
+ if(f==='fact'){add('!');return}
+ if(f==='sin'){add('sin(');return} if(f==='cos'){add('cos(');return} if(f==='tan'){add('tan(');return}
+ if(f==='asin'){add('asin(');return} if(f==='acos'){add('acos(');return} if(f==='atan'){add('atan(');return}
+ if(f==='pi'){add('π');return} if(f==='e'){add('e');return} if(f==='abs'){add('Abs(');return}
+ if(f==='neg'){add('−');return} if(f==='lparen'){add('(');return} if(f==='rparen'){add(')');return}
+ if(f==='percent'){add('%');return} if(f==='recip'){expr='1/('+expr+')';render();return}
+ if(f==='memory'){try{memory+=evalExpr(expr)}catch{}render();return} if(f==='memory-minus'){try{memory-=evalExpr(expr)}catch{}render();return}
+ if(f==='memory-recall'){add(String(memory));return}
+ if(f==='eng'){sub.textContent='ENG: '+(ans||0);return}
+ if(f==='deg'){angle='DEG';render();return} if(f==='rad'){angle='RAD';render();return}
+ if(f==='sci'){sub.textContent='SCI mode';return} if(f==='fix'){sub.textContent='FIX mode';return} if(f==='normal'){sub.textContent='NORM mode';return}
+}));
+render();
+
 const units={length:{'متر':1,'سنتيمتر':.01,'كيلومتر':1000,'مليمتر':.001,'ميل':1609.344,'ياردة':.9144,'قدم':.3048,'بوصة':.0254},area:{'م²':1,'كم²':1e6,'سم²':.0001,'هكتار':10000,'فدان':4046.856422},volume:{'لتر':1,'مليلتر':.001,'م³':1000,'سم³':.001,'جالون أمريكي':3.785411784},weight:{'كيلوغرام':1,'غرام':.001,'مليغرام':1e-6,'طن':1000,'رطل':.45359237,'أونصة':.0283495231},speed:{'م/ث':1,'كم/س':1/3.6,'ميل/س':.44704,'عقدة':.514444},time:{'ثانية':1,'دقيقة':60,'ساعة':3600,'يوم':86400,'أسبوع':604800},data:{'بايت':1,'كيلوبايت':1024,'ميغابايت':1048576,'غيغابايت':1073741824,'تيرابايت':1099511627776}};
 const cats={length:'الطول',area:'المساحة',volume:'الحجم',weight:'الوزن',speed:'السرعة',temp:'الحرارة',time:'الوقت',data:'البيانات الرقمية'};const cat=document.querySelector('#unitCategory'),from=document.querySelector('#fromUnit'),to=document.querySelector('#toUnit'),ui=document.querySelector('#unitInput'),ur=document.querySelector('#unitResult');
 function fillUnits(){const c=cat.value;if(c==='temp'){from.innerHTML='<option>مئوية</option><option>فهرنهايت</option><option>كلفن</option>';to.innerHTML='<option>فهرنهايت</option><option>مئوية</option><option>كلفن</option>'}else{const names=Object.keys(units[c]);from.innerHTML=names.map(x=>'<option>'+x+'</option>').join('');to.innerHTML=names.map(x=>'<option>'+x+'</option>').join('')}convert()}
